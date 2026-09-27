@@ -24,6 +24,7 @@ import {
   Flame,
   Zap,
   Store,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Language } from '../translations';
@@ -31,6 +32,7 @@ import { translations, getSpeechLangCode, getTwoAudioBriefings } from '../transl
 import type { Order, Listing } from '../types';
 import { FarmerYieldAndPriceWidget } from './FarmerYieldAndPriceWidget';
 import { DualAudioBriefingStudio } from './DualAudioBriefingStudio';
+import { DeleteListingModal } from './DeleteListingModal';
 
 interface FarmerDashboardProps {
   language: Language;
@@ -41,6 +43,7 @@ interface FarmerDashboardProps {
   onOpenNavMenu?: () => void;
   onOpenGuideModal?: () => void;
   onOpenVisionModal?: () => void;
+  onDeleteListing?: (listingId: string) => void;
 }
 
 const DEFAULT_PASSPORT_PHOTO =
@@ -161,6 +164,7 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   onOpenNavMenu,
   onOpenGuideModal,
   onOpenVisionModal,
+  onDeleteListing,
 }) => {
   const { userProfile } = useAuth();
   const t = translations[language];
@@ -169,6 +173,8 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const [newsRefreshing, setNewsRefreshing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string>('Just now (Auto-synced)');
   const [mandiRates, setMandiRates] = useState<MandiMarketRateItem[]>(INITIAL_MANDI_RATES);
+  const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
+  const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
   const [marketAudit, setMarketAudit] = useState(
     'Indore & Malwa Mandis: Wheat Lokwan is trading firm at ₹2,580 - ₹2,640/Qtl. Soybean Yellow at ₹4,420 - ₹4,480/Qtl. Pre-Diwali price spike projected in October across wholesale mandis.'
   );
@@ -638,54 +644,80 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
         </div>
 
         {/* Live crop lots horizontal scroll or grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
-          {listings
-            .filter((l) => l.status === 'Available')
-            .slice(0, 3)
-            .map((l) => (
-              <div
-                key={l.id}
-                onClick={() => onNavigate('marketplace')}
-                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 transition-all flex items-start gap-3.5 cursor-pointer group"
-              >
-                {l.photoUrl ? (
-                  <img
-                    src={l.photoUrl}
-                    alt={l.crop}
-                    className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 shrink-0">
-                    <Wheat className="w-6 h-6" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
-                      {l.crop} ({l.variety})
-                    </h4>
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                      ₹{l.price.toLocaleString()}/T
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>{l.qty} Tons Lot</span>
-                    <span>•</span>
-                    <span className="text-purple-600 dark:text-purple-400 font-bold">
-                      {l.qualityAssessment?.grade?.split(' ')[0] || 'Grade-A'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200 dark:border-slate-700 text-[10px]">
-                    <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                      <span>{isHindi ? 'लाइव मंडी में सक्रिय' : 'Live in Mart'}</span>
-                    </span>
-                    <span className="text-slate-400 font-medium">{l.id}</span>
+        {listings.filter((l) => l.status === 'Available').length === 0 ? (
+          <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
+            <Wheat className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              {isHindi ? 'कोई सक्रिय फसल सूचीबद्ध नहीं है।' : 'No active crop lots in Wholesale Mart.'}
+            </p>
+            <p className="text-[11px] text-slate-400">
+              {isHindi ? 'नई फसल जोड़ने के लिए ऊपर दिए गए बटन पर क्लिक करें।' : 'Click "List New Crop" above to publish harvest lots with instant AGMARK certificate.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+            {listings
+              .filter((l) => l.status === 'Available')
+              .slice(0, 6)
+              .map((l) => (
+                <div
+                  key={l.id}
+                  onClick={() => onNavigate('marketplace')}
+                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 transition-all flex items-start gap-3.5 cursor-pointer group relative"
+                >
+                  {l.photoUrl ? (
+                    <img
+                      src={l.photoUrl}
+                      alt={l.crop}
+                      className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 shrink-0">
+                      <Wheat className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                        {l.crop} ({l.variety})
+                      </h4>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                        ₹{l.price.toLocaleString()}/T
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>{l.qty} Tons Lot</span>
+                      <span>•</span>
+                      <span className="text-purple-600 dark:text-purple-400 font-bold">
+                        {l.qualityAssessment?.grade?.split(' ')[0] || 'Grade-A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-200 dark:border-slate-700 text-[10px]">
+                      <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                        <span>{isHindi ? 'लाइव मंडी में' : 'Live in Mart'}</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-medium">{l.id}</span>
+                        {onDeleteListing && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setListingToDelete(l);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                            title={isHindi ? 'यह फसल लॉट हटाएं' : 'Delete this crop lot'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-        </div>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* 6. REGIONAL MANDI INTELLIGENCE & NEWS */}
@@ -766,6 +798,25 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
           </motion.button>
         </div>
       </div>
+
+      {/* Delete Crop Listing Confirmation Modal */}
+      <DeleteListingModal
+        isOpen={!!listingToDelete}
+        onClose={() => setListingToDelete(null)}
+        onConfirm={async () => {
+          if (!listingToDelete || !onDeleteListing) return;
+          setIsDeletingListing(true);
+          try {
+            await onDeleteListing(listingToDelete.id);
+            setListingToDelete(null);
+          } finally {
+            setIsDeletingListing(false);
+          }
+        }}
+        listing={listingToDelete}
+        language={language}
+        isDeleting={isDeletingListing}
+      />
     </div>
   );
 };

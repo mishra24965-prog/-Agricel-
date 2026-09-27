@@ -3,6 +3,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   getDocs,
 } from 'firebase/firestore';
@@ -387,6 +388,15 @@ export async function updateCropListingStatus(listingId: string, status: Listing
     await updateDoc(doc(db, 'listings', listingId), { status });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function deleteCropListing(listingId: string) {
+  const path = `listings/${listingId}`;
+  try {
+    await deleteDoc(doc(db, 'listings', listingId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

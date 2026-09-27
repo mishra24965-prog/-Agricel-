@@ -12,12 +12,14 @@ import {
   Camera,
   ExternalLink,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { createEscrowOrder, updateCropListingStatus } from '../services/db';
 import type { Language } from '../translations';
 import { translations } from '../translations';
 import type { Listing, Order, QualityAssessment } from '../types';
+import { DeleteListingModal } from './DeleteListingModal';
 
 interface MarketplaceViewProps {
   language: Language;
@@ -25,6 +27,7 @@ interface MarketplaceViewProps {
   recentlyPublishedId?: string | null;
   onClearRecentlyPublished?: () => void;
   onOrderCreated: (trackingId: string) => void;
+  onDeleteListing?: (listingId: string) => void;
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
@@ -33,6 +36,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   recentlyPublishedId,
   onClearRecentlyPublished,
   onOrderCreated,
+  onDeleteListing,
 }) => {
   const { userProfile } = useAuth();
   const t = translations[language];
@@ -40,6 +44,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
 
   const [filterCrop, setFilterCrop] = useState('All');
   const [activeCheckoutListing, setActiveCheckoutListing] = useState<Listing | null>(null);
+  const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [viewQualityModal, setViewQualityModal] = useState<{
     listing: Listing;
     quality: QualityAssessment;
@@ -100,6 +106,9 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   const isMyLot = (l: Listing) => {
     if (recentlyPublishedId && l.id === recentlyPublishedId) return true;
     if (userProfile?.uid && l.ownerId === userProfile.uid) return true;
+    if (userProfile?.phone && l.phone === userProfile.phone) return true;
+    if (userProfile?.role === 'admin') return true;
+    if (userProfile?.role === 'farmer' && (l.ownerId === 'default-farmer-1' || (userProfile.displayName && l.farmerName.includes(userProfile.displayName)))) return true;
     return false;
   };
 
@@ -150,13 +159,23 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end md:self-center relative z-10">
+            <div className="flex items-center gap-2 self-end md:self-center relative z-10 flex-wrap">
               <button
                 onClick={() => setFilterCrop('Your Produce')}
                 className="px-3.5 py-2 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-black transition-all shadow-md"
               >
                 {isHindi ? 'केवल अपनी फसलें देखें' : 'View Your Lots'}
               </button>
+              {onDeleteListing && (
+                <button
+                  onClick={() => setListingToDelete(recentlyPublishedItem)}
+                  className="px-3 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                  title={isHindi ? 'यह प्रकाशित फसल हटाएं' : 'Delete this published lot'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isHindi ? 'फसल हटाएं' : 'Delete Lot'}</span>
+                </button>
+              )}
               {onClearRecentlyPublished && (
                 <button
                   onClick={onClearRecentlyPublished}
@@ -285,6 +304,19 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                           <span>{isHindi ? 'आपकी फसल' : 'Your Lot'}</span>
                         </span>
                       ) : null}
+                      {isOwner && onDeleteListing && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListingToDelete(l);
+                          }}
+                          className="bg-rose-600/90 hover:bg-rose-700 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-md flex items-center gap-1 transition-colors"
+                          title={isHindi ? 'यह फसल लॉट हटाएं' : 'Delete crop lot'}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>{isHindi ? 'हटाएं' : 'Delete'}</span>
+                        </button>
+                      )}
                     </div>
                     <span className="bg-emerald-600 text-white text-xs px-3 py-1 rounded-full font-black shadow-md shrink-0">
                       ₹{l.price.toLocaleString()} / Ton
@@ -372,15 +404,46 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                   </div>
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveCheckoutListing(l)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
-                >
-                  <Lock className="w-4 h-4" />
-                  <span>Buy via Secure Escrow</span>
-                </motion.button>
+                {isOwner ? (
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setListingToDelete(l)}
+                      className="flex-1 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <span>{isHindi ? 'फसल लॉट हटाएं' : 'Delete / Unlist Lot'}</span>
+                    </motion.button>
+                    {l.qualityAssessment && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          setViewQualityModal({
+                            listing: l,
+                            quality: l.qualityAssessment!,
+                          });
+                        }}
+                        className="px-3.5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 transition-all"
+                        title={isHindi ? 'प्रमाण-पत्र देखें' : 'View Certificate'}
+                      >
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>{isHindi ? 'प्रमाण-पत्र' : 'Certificate'}</span>
+                      </motion.button>
+                    )}
+                  </div>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setActiveCheckoutListing(l)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Buy via Secure Escrow</span>
+                  </motion.button>
+                )}
               </div>
             </motion.div>
           );
@@ -582,6 +645,28 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Listing Confirmation Modal */}
+      <DeleteListingModal
+        isOpen={!!listingToDelete}
+        onClose={() => setListingToDelete(null)}
+        onConfirm={async () => {
+          if (!listingToDelete || !onDeleteListing) return;
+          setIsDeleting(true);
+          try {
+            await onDeleteListing(listingToDelete.id);
+            if (recentlyPublishedId === listingToDelete.id && onClearRecentlyPublished) {
+              onClearRecentlyPublished();
+            }
+            setListingToDelete(null);
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        listing={listingToDelete}
+        language={language}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

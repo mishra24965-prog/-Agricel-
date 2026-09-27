@@ -29,6 +29,7 @@ import {
   subscribeToGrievances,
   seedInitialDataIfEmpty,
   computeRegionalClusters,
+  deleteCropListing,
   INITIAL_LISTINGS,
   INITIAL_ORDERS,
   INITIAL_DEMANDS,
@@ -209,6 +210,34 @@ function MainContent() {
     setCurrentView('workspace');
   };
 
+  const handleDeleteListing = async (listingId: string) => {
+    const itemToDelete = listings.find((l) => l.id === listingId);
+    const cropTitle = itemToDelete ? `${itemToDelete.qty}T ${itemToDelete.crop}` : 'Crop lot';
+
+    // Optimistic removal from local state so UI updates instantly
+    setListings((prev) => prev.filter((l) => l.id !== listingId));
+    if (recentlyPublishedListingId === listingId) {
+      setRecentlyPublishedListingId(null);
+    }
+
+    try {
+      await deleteCropListing(listingId);
+      showToast(
+        language === 'hi'
+          ? `🗑️ संपन्न! ${cropTitle} थोक मंडी से हटा दिया गया है।`
+          : `🗑️ Done! ${cropTitle} removed from Wholesale Mart.`
+      );
+    } catch (err) {
+      console.warn('Error deleting listing:', err);
+      showToast(
+        language === 'hi'
+          ? 'फसल हटाने में त्रुटि हुई। कृपया पुनः प्रयास करें।'
+          : 'Error removing crop listing. Please try again.',
+        'info'
+      );
+    }
+  };
+
   const handleWeighbridgeVerified = () => {
     showToast('Weighbridge Verified! Escrow automated bank payout disbursed.');
   };
@@ -295,6 +324,7 @@ function MainContent() {
                       onOpenNavMenu={() => setIsNavMenuOpen(true)}
                       onOpenGuideModal={() => setIsGuideModalOpen(true)}
                       onOpenVisionModal={() => setIsVisionModalOpen(true)}
+                      onDeleteListing={handleDeleteListing}
                     />
                   )}
 
@@ -314,6 +344,7 @@ function MainContent() {
                       recentlyPublishedId={recentlyPublishedListingId}
                       onClearRecentlyPublished={() => setRecentlyPublishedListingId(null)}
                       onOrderCreated={handleOrderCreated}
+                      onDeleteListing={handleDeleteListing}
                     />
                   )}
                 </>
@@ -353,6 +384,7 @@ function MainContent() {
                       recentlyPublishedId={recentlyPublishedListingId}
                       onClearRecentlyPublished={() => setRecentlyPublishedListingId(null)}
                       onOrderCreated={handleOrderCreated}
+                      onDeleteListing={handleDeleteListing}
                     />
                   )}
 
