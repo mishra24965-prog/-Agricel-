@@ -22,16 +22,21 @@ import type { Listing, Order, QualityAssessment } from '../types';
 interface MarketplaceViewProps {
   language: Language;
   listings: Listing[];
+  recentlyPublishedId?: string | null;
+  onClearRecentlyPublished?: () => void;
   onOrderCreated: (trackingId: string) => void;
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   language,
   listings,
+  recentlyPublishedId,
+  onClearRecentlyPublished,
   onOrderCreated,
 }) => {
   const { userProfile } = useAuth();
   const t = translations[language];
+  const isHindi = language === 'hi' || language === 'bho';
 
   const [filterCrop, setFilterCrop] = useState('All');
   const [activeCheckoutListing, setActiveCheckoutListing] = useState<Listing | null>(null);
@@ -41,11 +46,17 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const availableListings = listings.filter((l) => l.status === 'Available');
-  const filteredListings =
-    filterCrop === 'All'
-      ? availableListings
-      : availableListings.filter((l) => l.crop.toLowerCase().includes(filterCrop.toLowerCase()));
+  const availableListings = [...listings]
+    .filter((l) => l.status === 'Available')
+    .sort((a, b) => {
+      if (recentlyPublishedId && a.id === recentlyPublishedId) return -1;
+      if (recentlyPublishedId && b.id === recentlyPublishedId) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+  const recentlyPublishedItem = recentlyPublishedId
+    ? listings.find((l) => l.id === recentlyPublishedId)
+    : null;
 
   const handleConfirmPurchase = async () => {
     if (!activeCheckoutListing) return;
@@ -86,10 +97,80 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
     }
   };
 
-  const cropCategories = ['All', 'Wheat', 'Soybean', 'Paddy', 'Mustard', 'Maize', 'Gram'];
+  const isMyLot = (l: Listing) => {
+    if (recentlyPublishedId && l.id === recentlyPublishedId) return true;
+    if (userProfile?.uid && l.ownerId === userProfile.uid) return true;
+    return false;
+  };
+
+  const cropCategories = ['All', 'Your Produce', 'Wheat', 'Soybean', 'Paddy', 'Mustard', 'Maize', 'Gram'];
+
+  const filteredListings =
+    filterCrop === 'All'
+      ? availableListings
+      : filterCrop === 'Your Produce'
+      ? availableListings.filter((l) => isMyLot(l))
+      : availableListings.filter((l) => l.crop.toLowerCase().includes(filterCrop.toLowerCase()));
 
   return (
     <div className="space-y-6">
+      {/* 1. Top Celebration Banner if a listing was just published */}
+      <AnimatePresence>
+        {recentlyPublishedItem && (
+          <motion.div
+            initial={{ opacity: 0, y: -15, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.98 }}
+            className="p-5 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-emerald-400/40 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+            <div className="flex items-center gap-3.5 relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-amber-300 shrink-0 shadow-inner">
+                <Sparkles className="w-6 h-6 animate-spin" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-emerald-100 text-[10px] font-black uppercase tracking-wider">
+                    {isHindi ? 'लाइव थोक मंडी में सक्रिय' : 'Live in Wholesale Mart'}
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-emerald-200">
+                    ID: {recentlyPublishedItem.id}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
+                  {isHindi
+                    ? `🎉 बधाई! ${recentlyPublishedItem.crop} (${recentlyPublishedItem.qty} टन) सफलतापूर्वक थोक मंडी में सूचीबद्ध हो चुका है!`
+                    : `🎉 Done! Your ${recentlyPublishedItem.qty}T ${recentlyPublishedItem.crop} is published & live in the Wholesale Mart!`}
+                </h3>
+                <p className="text-xs text-emerald-100/90 font-medium">
+                  {isHindi
+                    ? 'खरीदार अब आपकी एगमार्क ग्रेड व अनाज फोटो देखकर १००% बैंक एस्क्रो में भुगतान सुरक्षित कर सकते हैं।'
+                    : 'Wholesale buyers and flour millers can now view your AGMARK report and lock purchase orders via Escrow.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-center relative z-10">
+              <button
+                onClick={() => setFilterCrop('Your Produce')}
+                className="px-3.5 py-2 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-black transition-all shadow-md"
+              >
+                {isHindi ? 'केवल अपनी फसलें देखें' : 'View Your Lots'}
+              </button>
+              {onClearRecentlyPublished && (
+                <button
+                  onClick={onClearRecentlyPublished}
+                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                  title="Dismiss banner"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 mb-2">
@@ -117,7 +198,14 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
-              {c}
+              {c === 'Your Produce' ? (
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>{isHindi ? 'आपकी फसलें' : 'Your Produce'}</span>
+                </span>
+              ) : (
+                c
+              )}
             </motion.button>
           ))}
         </div>
@@ -143,42 +231,65 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
           }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {filteredListings.map((l) => (
-            <motion.div
-              key={l.id}
-              variants={{
-                hidden: { opacity: 0, y: 15 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-              }}
-              whileHover={{ y: -6, scale: 1.015 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col justify-between hover:border-emerald-500/50 hover:shadow-xl transition-colors group cursor-pointer"
-            >
-              {/* Photo & Quality Badge Header */}
-              <div className="relative h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                {l.photoUrl ? (
-                  <img
-                    src={l.photoUrl}
-                    alt={l.crop}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-amber-500">
-                    <Wheat className="w-12 h-12" />
+          {filteredListings.map((l) => {
+            const isJustPublished = recentlyPublishedId === l.id;
+            const isOwner = isMyLot(l);
+
+            return (
+              <motion.div
+                key={l.id}
+                variants={{
+                  hidden: { opacity: 0, y: 15 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+                }}
+                whileHover={{ y: -6, scale: 1.015 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+                className={`bg-white dark:bg-slate-900 rounded-3xl border shadow-sm overflow-hidden flex flex-col justify-between transition-all group cursor-pointer ${
+                  isJustPublished
+                    ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/20 ring-4 ring-emerald-500/20'
+                    : isOwner
+                    ? 'border-amber-400/80 hover:border-amber-500 shadow-md'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 hover:shadow-xl'
+                }`}
+              >
+                {/* Photo & Quality Badge Header */}
+                <div className="relative h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  {l.photoUrl ? (
+                    <img
+                      src={l.photoUrl}
+                      alt={l.crop}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-amber-500">
+                      <Wheat className="w-12 h-12" />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+
+                  {/* Top Badges */}
+                  <div className="absolute top-3 left-3 right-3 flex justify-between items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-900 dark:text-white text-xs px-3 py-1 rounded-full font-black shadow-md">
+                        {l.crop} • {l.variety}
+                      </span>
+                      {isJustPublished ? (
+                        <span className="bg-emerald-500 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-md flex items-center gap-1 animate-pulse">
+                          <Sparkles className="w-3 h-3" />
+                          <span>{isHindi ? 'अभी प्रकाशित • आपकी फसल' : 'Just Published • Live Lot'}</span>
+                        </span>
+                      ) : isOwner ? (
+                        <span className="bg-amber-400 text-slate-950 text-[10px] px-2 py-0.5 rounded-full font-black shadow-md flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          <span>{isHindi ? 'आपकी फसल' : 'Your Lot'}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="bg-emerald-600 text-white text-xs px-3 py-1 rounded-full font-black shadow-md shrink-0">
+                      ₹{l.price.toLocaleString()} / Ton
+                    </span>
                   </div>
-                )}
-
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-
-                {/* Top Badges */}
-                <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
-                  <span className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-900 dark:text-white text-xs px-3 py-1 rounded-full font-black shadow-md">
-                    {l.crop} • {l.variety}
-                  </span>
-                  <span className="bg-emerald-600 text-white text-xs px-3 py-1 rounded-full font-black shadow-md">
-                    ₹{l.price.toLocaleString()} / Ton
-                  </span>
-                </div>
 
                 {/* Bottom Photo Pill: AI Quality Inspection */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
@@ -272,7 +383,8 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                 </motion.button>
               </div>
             </motion.div>
-          ))}
+          );
+        })}
         </motion.div>
       )}
 

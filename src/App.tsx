@@ -66,6 +66,7 @@ function MainContent() {
     return !localStorage.getItem('agricel_farmer_registered');
   });
   const [prefilledTrackingId, setPrefilledTrackingId] = useState('');
+  const [recentlyPublishedListingId, setRecentlyPublishedListingId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Real-time Firestore state
@@ -172,9 +173,40 @@ function MainContent() {
     handleTrackFromOrder(trackingId);
   };
 
-  const handleListingPublished = () => {
-    showToast('Harvest successfully published with photo & AI certificate to Wholesale Mart!');
-    handleNavigateTab('marketplace', 'farmer');
+  const handleListingPublished = (newListingOrId?: Listing | string) => {
+    let publishedItem: Listing | null = null;
+    let publishedId: string = '';
+
+    if (newListingOrId && typeof newListingOrId === 'object' && 'id' in newListingOrId) {
+      publishedItem = newListingOrId as Listing;
+      publishedId = publishedItem.id;
+      // Optimistically add to state so it appears IMMEDIATELY at the top of Wholesale Mart!
+      setListings((prev) => {
+        const filtered = prev.filter((l) => l.id !== publishedItem!.id);
+        return [publishedItem!, ...filtered];
+      });
+    } else if (typeof newListingOrId === 'string') {
+      publishedId = newListingOrId;
+      publishedItem = listings.find((l) => l.id === publishedId) || null;
+    }
+
+    if (publishedId) {
+      setRecentlyPublishedListingId(publishedId);
+    }
+
+    const cropName = publishedItem?.crop || 'Harvest crop';
+    const lotQty = publishedItem?.qty ? `${publishedItem.qty} Tons ` : '';
+
+    showToast(
+      language === 'hi'
+        ? `🎉 संपन्न! ${lotQty}${cropName} थोक मंडी में सफलतापूर्वक सूचीबद्ध हो चुका है!`
+        : `🎉 Done! ${lotQty}${cropName} is published & live in the Wholesale Mart!`
+    );
+
+    // CLOSE THE LISTING WINDOW: switch directly to Wholesale Mart (Marketplace)
+    setActivePortal('farmer');
+    setActiveTab('marketplace');
+    setCurrentView('workspace');
   };
 
   const handleWeighbridgeVerified = () => {
@@ -270,6 +302,8 @@ function MainContent() {
                     <FarmerListingView
                       language={language}
                       onSuccess={handleListingPublished}
+                      onNavigate={handleNavigateTab}
+                      onClose={() => handleNavigateTab('marketplace', 'farmer')}
                     />
                   )}
 
@@ -277,6 +311,8 @@ function MainContent() {
                     <MarketplaceView
                       language={language}
                       listings={listings}
+                      recentlyPublishedId={recentlyPublishedListingId}
+                      onClearRecentlyPublished={() => setRecentlyPublishedListingId(null)}
                       onOrderCreated={handleOrderCreated}
                     />
                   )}
@@ -314,6 +350,8 @@ function MainContent() {
                     <MarketplaceView
                       language={language}
                       listings={listings}
+                      recentlyPublishedId={recentlyPublishedListingId}
+                      onClearRecentlyPublished={() => setRecentlyPublishedListingId(null)}
                       onOrderCreated={handleOrderCreated}
                     />
                   )}
