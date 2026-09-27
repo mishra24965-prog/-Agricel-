@@ -95,19 +95,6 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
       isActive: currentView === 'workspace' && activeTab === 'farmer-dashboard' && activePortal === 'farmer',
     },
     {
-      id: 'how-to-operate',
-      label: isHindi ? 'संचालन गाइड (कहाँ जाएं व क्या करें)' : 'How to Operate (Step Guide)',
-      desc: isHindi ? 'स्टेप-दर-स्टेप: फसल लिस्टिंग, एआई जांच व 60-सेकंड बैंक भुगतान' : 'Where to go & what to do: listing, AI check & 60-sec payout',
-      icon: BookOpen,
-      badge: isHindi ? 'गाइड' : 'Steps',
-      highlight: true,
-      onClick: () => {
-        onClose();
-        onOpenGuideModal();
-      },
-      isActive: false,
-    },
-    {
       id: 'farmer-listing',
       label: isHindi ? 'फसल लॉट सूचीबद्ध करें' : 'List Harvest Crop',
       desc: isHindi ? 'थोक मिलर्स व खरीदारों हेतु नया अनाज लॉट बनाएं' : 'Publish AGMARK-graded harvest lot for millers',
@@ -134,7 +121,7 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
     {
       id: 'vision',
       label: isHindi ? 'एआई अनाज गुणवत्ता स्कैनर' : 'AI Grain Inspector',
-      desc: isHindi ? 'जेमिनी 3.8 से एगमार्क व नमी जांच' : 'Optical defect & AGMARK Grade-1 verification',
+      desc: isHindi ? 'एआई से शुद्धता, टूटे दाने व एगमार्क ग्रेड जांच' : 'Optical defects, broken seeds & AGMARK grading',
       icon: Camera,
       badge: 'AI Vision',
       onClick: () => {
@@ -573,23 +560,6 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
 
-            {/* How to Operate Guide */}
-            <button
-              onClick={() => {
-                onClose();
-                onOpenGuideModal();
-              }}
-              className="w-full p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-between text-xs font-bold transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <BookOpen className="w-4 h-4 text-emerald-600" />
-                <span>{isHindi ? 'एग्रीसेल संचालन गाइड' : 'How to Operate Guide'}</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                Walkthrough
-              </span>
-            </button>
-
             {/* Dark Mode Toggle inside Menu */}
             {setDarkMode && (
               <button
@@ -617,6 +587,32 @@ export const NavigationMenuDrawer: React.FC<NavigationMenuDrawerProps> = ({
                 <span>Active 100%</span>
               </span>
             </div>
+
+            {/* How to Operate Guide (Placed at the very last in Menu) */}
+            <button
+              onClick={() => {
+                onClose();
+                onOpenGuideModal();
+              }}
+              className="w-full p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50 border border-emerald-300/80 dark:border-emerald-800 hover:border-emerald-500 text-emerald-950 dark:text-emerald-200 flex items-center justify-between text-xs font-black transition-all shadow-2xs group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                  <BookOpen className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <div className="font-black text-xs leading-tight">
+                    {isHindi ? 'संचालन गाइड (How to Operate)' : 'How to Operate (Step Guide)'}
+                  </div>
+                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    {isHindi ? 'कहाँ जाएं व क्या करें (संपूर्ण वर्कफ़्लो)' : 'Where to go & what to do walkthrough'}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold shadow-2xs group-hover:scale-105 transition-transform">
+                {isHindi ? 'गाइड' : 'Guide'}
+              </span>
+            </button>
           </div>
         </div>
 

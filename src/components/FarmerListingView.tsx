@@ -244,7 +244,7 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
                 {isInspectingPhoto ? (
                   <div className="h-full flex items-center justify-center p-6 text-purple-600 text-xs font-bold gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Analyzing grain morphology, moisture and dockage...</span>
+                    <span>Analyzing grain optical purity, broken seeds and dockage...</span>
                   </div>
                 ) : qualityAssessment ? (
                   <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 space-y-3 text-xs shadow-xs">
@@ -254,7 +254,7 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
                           {qualityAssessment.grade}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                          Gemini 3.8 Flash
+                          AGMARK Optical Grade
                         </span>
                       </div>
                       <span className="font-extrabold text-emerald-600 flex items-center gap-1 text-xs">
@@ -264,12 +264,6 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                        <span className="text-slate-400 block text-[10px]">Moisture:</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
-                          {qualityAssessment.moisturePercent}% (Optimal &lt; 12%)
-                        </span>
-                      </div>
                       <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">
                         <span className="text-slate-400 block text-[10px]">Foreign Matter:</span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -283,6 +277,12 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
                         </span>
                       </div>
                       <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        <span className="text-slate-400 block text-[10px]">Shriveled Grains:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {qualityAssessment.shriveledPercent}%
+                        </span>
+                      </div>
+                      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">
                         <span className="text-slate-400 block text-[10px]">Luster / Color:</span>
                         <span className="font-bold text-slate-800 dark:text-slate-200">
                           {qualityAssessment.luster}
@@ -292,7 +292,7 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
 
                     {qualityAssessment.dockageDeduction && (
                       <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900/60 text-[10px] text-amber-900 dark:text-amber-200">
-                        <span className="font-bold text-amber-700 dark:text-amber-300">Escrow Dockage Terms: </span>
+                        <span className="font-bold text-amber-700 dark:text-amber-300">Escrow Terms: </span>
                         {qualityAssessment.dockageDeduction}
                       </div>
                     )}
@@ -301,16 +301,14 @@ export const FarmerListingView: React.FC<FarmerListingViewProps> = ({ language, 
                       {qualityAssessment.notes}
                     </p>
 
-                    {qualityAssessment.trustedSources && qualityAssessment.trustedSources.length > 0 && (
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-slate-500">Cited:</span>
-                        {qualityAssessment.trustedSources.map((s, i) => (
-                          <span key={i} className="text-emerald-700 dark:text-emerald-300 font-medium">
-                            • {s}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 flex items-center justify-between gap-1.5 flex-wrap">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                        ✓ Moisture is verified at weighbridge scale meter
+                      </span>
+                      {qualityAssessment.trustedSources && qualityAssessment.trustedSources.length > 0 && (
+                        <span>Cited: {qualityAssessment.trustedSources[0]}</span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center p-6 text-slate-400 text-xs text-center border border-dashed rounded-2xl">

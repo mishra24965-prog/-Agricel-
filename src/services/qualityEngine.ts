@@ -112,35 +112,41 @@ export async function analyzeGrainPhoto(
   cropName: string,
   varietyName: string
 ): Promise<QualityAssessment> {
-  try {
-    const base64Data = await toBase64(imageUrl);
+  const base64Data = await toBase64(imageUrl);
 
-    // Call server-side Gemini 3.8 Flash endpoint
-    const response = await fetch('/api/grain/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        imageBase64: base64Data,
-        cropName,
-        varietyName,
-        mimeType: 'image/jpeg',
-      }),
-    });
+  // Call server-side Gemini Multimodal Vision endpoint
+  const response = await fetch('/api/grain/analyze', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      imageBase64: base64Data,
+      cropName,
+      varietyName,
+      mimeType: 'image/jpeg',
+    }),
+  });
 
-    if (response.ok) {
-      const result = await response.json();
-      if (result.success && result.data) {
-        return result.data as QualityAssessment;
-      }
+  if (response.ok) {
+    const result = await response.json();
+    if (result.success && result.data) {
+      return result.data as QualityAssessment;
     }
-  } catch (err) {
-    console.warn('Gemini 3.8 Flash online check failed, employing optical calibrator:', err);
+    if (result.error) {
+      throw new Error(result.error);
+    }
   }
 
-  // Fallback: Local optical pixel inspection calibrated to AGMARK schedules
-  return analyzeGrainPhotoLocalOptical(imageUrl, cropName, varietyName);
+  let errorDetails = 'Unable to connect to Gemini AI Vision server.';
+  try {
+    const errObj = await response.json();
+    if (errObj.error) errorDetails = errObj.error;
+  } catch {
+    // fallback string
+  }
+
+  throw new Error(errorDetails);
 }
 
 /**
@@ -241,36 +247,28 @@ export function generateRealisticStandardAssessment(
 ): QualityAssessment {
   const std = CROP_STANDARDS[cropName] || CROP_STANDARDS['Wheat'];
 
-  // Calculate realistic moisture based on optical condition & crop type
-  const moistureBase = std.maxOptimalMoisture - 0.8;
-  const moistureVariance = (1 - opticalPurity) * 2.2 + variance * 0.5;
-  const moisturePercent = Number((moistureBase + moistureVariance).toFixed(1));
-
-  // Foreign matter calculation (chaff, weed seeds, dust)
+  // Foreign matter calculation (chaff, weed seeds, dust, grit)
   const foreignMatterPercent = Number(
-    Math.max(0.1, (1 - opticalPurity) * 1.5 * std.maxForeignMatter + 0.15).toFixed(2)
+    Math.max(0.1, (1 - opticalPurity) * 1.4 * std.maxForeignMatter + 0.12).toFixed(2)
   );
 
   // Broken & split grains
   const brokenGrainsPercent = Number(
-    Math.max(0.3, (1 - opticalPurity) * 2.5 * std.maxBrokenGrains + 0.35).toFixed(1)
+    Math.max(0.3, (1 - opticalPurity) * 2.2 * std.maxBrokenGrains + 0.3).toFixed(1)
   );
 
   // Shriveled & immature grains
   const shriveledPercent = Number(
-    Math.max(0.2, (variance * 1.8 * std.maxShriveled) + 0.25).toFixed(1)
+    Math.max(0.2, (variance * 1.6 * std.maxShriveled) + 0.2).toFixed(1)
   );
 
-  // Compute overall purity score out of 100
+  // Compute overall purity score out of 100 based strictly on optical defects
   let score = 100;
-  if (moisturePercent > std.maxOptimalMoisture) {
-    score -= (moisturePercent - std.maxOptimalMoisture) * 8;
-  }
-  score -= foreignMatterPercent * 12;
-  score -= brokenGrainsPercent * 4;
-  score -= shriveledPercent * 3;
+  score -= foreignMatterPercent * 14;
+  score -= brokenGrainsPercent * 4.5;
+  score -= shriveledPercent * 3.5;
 
-  score = Math.round(Math.max(60, Math.min(99, score)));
+  score = Math.round(Math.max(62, Math.min(99, score)));
 
   // Assign AGMARK / APMC grade tier
   let grade: QualityAssessment['grade'];
@@ -291,29 +289,28 @@ export function generateRealisticStandardAssessment(
 
   const notes =
     grade === 'Grade A (Export / Premium)'
-      ? `Sample complies with ${std.agmarkGrade}. Grain shape is uniform with excellent test weight. Optimal moisture (${moisturePercent}%) ensures zero mold risk during bulk warehousing.`
+      ? `Visual specimen complies with ${std.agmarkGrade}. Grain shape is uniform with excellent test weight, negligible broken kernels (${brokenGrainsPercent}%), and virtually clean seed coat (${foreignMatterPercent}% dockage).`
       : grade === 'Grade B (Fair Average Quality - FAQ)'
-      ? `Meets standard domestic Mandi procurement norms (FAQ). Acceptable moisture (${moisturePercent}%) and low dockage (${foreignMatterPercent}%). Approved for standard escrow lock.`
-      : `Sub-standard moisture or chaff dockage (${foreignMatterPercent}%). Price discount or mechanical cleaning recommended before mill delivery.`;
+      ? `Meets standard domestic Mandi procurement norms (FAQ). Low visual dockage (${foreignMatterMatterLabel(foreignMatterPercent)}) and normal grain luster. Approved for standard escrow lock.`
+      : `Higher broken or shriveled kernel proportion (${brokenGrainsPercent}%). Recommend mechanical sieving or cleaning before final weighbridge scale delivery.`;
 
   const dockageDeduction =
     grade === 'Grade A (Export / Premium)'
-      ? 'Zero dockage deduction. Eligible for 2-4% export premium.'
+      ? 'Zero dockage deduction. High optical purity qualifies for 2-4% premium.'
       : grade === 'Grade B (Fair Average Quality - FAQ)'
-      ? 'Nominal dockage deduction: Standard APMC weighbridge net settlement.'
+      ? 'Nominal dockage terms: Standard APMC weighbridge net weight settlement.'
       : 'Excess dockage deduction: 1.5% dockage discount applied to escrow disbursement.';
 
   const agronomicAdvice =
     grade === 'Grade A (Export / Premium)'
-      ? 'Grains are well-cured. Maintain ambient relative humidity under 65% in dry ventilated silos.'
+      ? 'Kernels are well-filled and uniform. Keep in dry, ventilated storage away from moisture.'
       : grade === 'Grade B (Fair Average Quality - FAQ)'
-      ? 'Recommend 4-6 hours of shaded tarp sun-drying to drop moisture below 11.5% for extended storage.'
-      : 'Pass harvest lot through 2.0mm slotted sieve aspirator to remove chaff before terminal weighing.';
+      ? 'Good clean lot. Pass through standard seed grader to maximize market rate.'
+      : 'Pass harvest lot through a 2.0mm slotted screen to separate broken chips before dispatch.';
 
   return {
     grade,
     score,
-    moisturePercent,
     foreignMatterPercent,
     brokenGrainsPercent,
     shriveledPercent,
@@ -323,6 +320,7 @@ export function generateRealisticStandardAssessment(
     notes,
     dockageDeduction,
     agronomicAdvice,
+    moistureNotice: 'Physical moisture is tested on-site using a certified digital meter at the weighbridge scale.',
     trustedSources: [
       'Directorate of Marketing & Inspection (DMI) - Ministry of Agriculture',
       'Bureau of Indian Standards (BIS)',
@@ -335,4 +333,8 @@ export function generateRealisticStandardAssessment(
         : ['Uniform kernel sizing', 'Natural specular golden luster', 'Clean seed coat'],
     verifiedAt: new Date().toISOString(),
   };
+}
+
+function foreignMatterMatterLabel(val: number) {
+  return `${val}%`;
 }

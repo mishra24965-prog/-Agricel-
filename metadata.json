@@ -1,6 +1,9 @@
 {
   "name": "Agricel - Ag Supply Chain & Escrow Intelligence",
   "description": "Direct agricultural trade and procurement platform with secure bank escrow, automated weighbridge payouts, AI quality inspection, and personalized user profiles.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

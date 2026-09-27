@@ -2,8 +2,8 @@ export type UserRole = 'farmer' | 'buyer' | 'logistics' | 'admin';
 
 export interface QualityAssessment {
   grade: 'Grade A (Export / Premium)' | 'Grade B (Fair Average Quality - FAQ)' | 'Grade C (Milling / Feed Quality)';
-  score: number; // 0-100
-  moisturePercent: number; // e.g. 11.2%
+  score: number; // 0-100 Optical Purity score
+  moisturePercent?: number; // Optional on-site scale meter measurement
   foreignMatterPercent: number; // e.g. 0.4%
   brokenGrainsPercent: number; // e.g. 1.2%
   shriveledPercent: number; // e.g. 0.8%
@@ -18,6 +18,7 @@ export interface QualityAssessment {
   trustedSources?: string[];
   confidenceScore?: number;
   detectedDefects?: string[];
+  moistureNotice?: string;
 }
 
 export interface PaymentDetails {
@@ -98,72 +99,103 @@ export interface Listing {
   district: string; // e.g. 'Indore', 'Ujjain', 'Dewas', 'Hoshangabad'
   photoUrl?: string; // Harvest grain photograph uploaded during listing
   qualityAssessment?: QualityAssessment; // AI inspected grain quality
-  status: 'Available' | 'Escrow Locked' | 'Sold';
+  harvestDate?: string;
+  paymentModePreferred?: 'bank' | 'upi';
+  isEscrowGuaranteed?: boolean;
+  status: 'Available' | 'Locked in Escrow' | 'Escrow Locked' | 'Sold';
+  createdAt: string;
+}
+
+export interface Demand {
+  id: string;
+  buyerName: string;
+  buyerId?: string;
+  phone?: string;
+  buyerPhone?: string;
+  crop: string;
+  variety: string;
+  qtyNeeded?: number;
+  qty?: number;
+  targetPrice?: number;
+  price?: number;
+  destination?: string;
+  location?: string;
+  targetDistrict?: string;
+  state?: string;
+  escrowReady?: boolean;
+  verifiedGST?: boolean;
+  status?: string;
   createdAt: string;
 }
 
 export interface Order {
   id: string;
-  trackingId: string;
-  cropInfo: string;
+  listingId?: string;
   buyerId: string;
+  farmerId?: string;
   buyerName: string;
-  buyerPhone: string;
-  farmerId: string;
   farmerName: string;
+  buyerPhone: string;
   farmerPhone: string;
+  crop?: string;
+  variety?: string;
+  cropInfo?: string;
+  origin?: string;
   qty: number;
   pricePerTon: number;
   totalEscrow: number;
   estimatedFreight?: number;
   landedCostPerTon?: number;
-  status: 'Awaiting Weighbridge' | 'In Transit / Verified' | 'Settled' | 'Disputed';
-  origin: string;
+  trackingId: string;
+  status: 'Escrow Locked' | 'Awaiting Weighbridge' | 'In Transit / Verified' | 'Settled' | 'Disputed';
+  weighbridgeStation?: string;
   verifiedWeight?: number;
+  scaleSlipUrl?: string;
+  paymentRef?: string;
+  settledAt?: string;
   createdAt: string;
-  updatedAt: string;
-}
-
-export interface Demand {
-  id: string;
-  buyerId: string;
-  buyerName: string;
-  buyerPhone: string;
-  crop: string;
-  variety: string;
-  qty: number;
-  price: number;
-  location: string;
-  targetDistrict?: string;
-  status: 'Open' | 'Fulfilled';
-  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Grievance {
   id: string;
-  trackingId: string;
   orderId: string;
-  raisedById: string;
-  raisedByName: string;
-  userPhone: string;
-  farmerPhone: string;
-  role: string;
+  trackingId: string;
+  raisedBy?: string;
+  raisedById?: string;
+  raisedByName?: string;
+  raisedByRole?: UserRole;
+  role?: string;
+  farmerName?: string;
+  farmerPhone?: string;
+  buyerName?: string;
+  buyerPhone?: string;
+  userPhone?: string;
   category: string;
   details: string;
-  status: 'Open' | 'Resolved';
+  status: 'Open' | 'Under Investigation' | 'Resolved / Settled';
+  ruling?: string;
   verdict?: string;
+  arbitratorNotes?: string;
   createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface RegionalCluster {
   district: string;
-  crop: string;
-  totalQty: number;
-  listingCount: number;
-  avgPrice: number;
-  avgQualityScore: number;
-  listings: Listing[];
-  freightEstimatePerTon: number;
-  potentialSavings: number;
-  aiProcurementAdvice: string;
+  crop?: string;
+  primaryCrop: string;
+  totalAvailableTons: number;
+  totalQty?: number;
+  activeListingsCount: number;
+  listingCount?: number;
+  avgAskingPrice: number;
+  avgPrice?: number;
+  avgQualityScore?: number;
+  potentialSavings?: number;
+  freightEstimatePerTon?: number;
+  aiProcurementAdvice?: string;
+  buyerDemandTons: number;
+  topVarieties: string[];
+  listings?: Listing[];
 }

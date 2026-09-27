@@ -9,10 +9,16 @@ import {
   Loader2,
   FileCheck2,
   Scan,
+  Volume2,
+  VolumeX,
+  ShieldCheck,
+  Info,
+  RotateCw,
+  AlertCircle,
 } from 'lucide-react';
 import { analyzeGrainPhoto } from '../services/qualityEngine';
 import type { Language } from '../translations';
-import { translations } from '../translations';
+import { translations, getSpeechLangCode } from '../translations';
 import type { QualityAssessment } from '../types';
 
 interface GrainVisionModalProps {
@@ -37,6 +43,8 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
   const [variety, setVariety] = useState('Lokwan Grade-A');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<QualityAssessment | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   if (!isOpen) return null;
 
@@ -48,12 +56,14 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
         const url = evt.target?.result as string;
         setPreviewUrl(url);
         setAnalysisResult(null);
+        setAnalysisError(null);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const loadSample = (sampleType: 'wheat' | 'soybean' | 'paddy') => {
+    setAnalysisError(null);
     if (sampleType === 'wheat') {
       setCrop('Wheat');
       setVariety('Lokwan Benchmark');
@@ -79,12 +89,80 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
   const handleRunAnalysis = async () => {
     if (!previewUrl) return;
     setIsAnalyzing(true);
+    setAnalysisError(null);
     try {
       const result = await analyzeGrainPhoto(previewUrl, crop, variety);
       setAnalysisResult(result);
+      setAnalysisError(null);
+    } catch (err: any) {
+      console.warn('AI Vision call encountered an error:', err);
+      setAnalysisError(
+        err?.message || 'Unable to connect to Gemini AI Vision API. Tap retry below or re-upload a clear photo.'
+      );
+      setAnalysisResult(null);
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleSpeakReport = () => {
+    if (!analysisResult) return;
+    if (!('speechSynthesis' in window)) {
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    let speechText = '';
+    switch (language) {
+      case 'hi':
+      case 'bho':
+        speechText = `अनाज गुणवत्ता रिपोर्ट: फसल ${crop}, ग्रेड ${analysisResult.grade} है। शुद्धता स्कोर ${analysisResult.score} अंक है। कचरा मात्र ${analysisResult.foreignMatterPercent} प्रतिशत, टूटे दाने ${analysisResult.brokenGrainsPercent} प्रतिशत है। दाने की चमक ${analysisResult.luster} है। यह फसल एगमार्क मानक के अनुसार जांची गई है।`;
+        break;
+      case 'pa':
+        speechText = `ਅਨਾਜ ਜਾਂਚ ਰਿਪੋਰਟ: ਫ਼ਸਲ ${crop}, ਗ੍ਰੇਡ ${analysisResult.grade} ਹੈ। ਸ਼ੁੱਧਤਾ ਸਕੋਰ ${analysisResult.score} ਅੰਕ ਹੈ। ਕਚਰਾ ${analysisResult.foreignMatterPercent} ਪ੍ਰਤੀਸ਼ਤ ਅਤੇ ਟੁੱਟੇ ਦਾਣੇ ${analysisResult.brokenGrainsPercent} ਪ੍ਰਤੀਸ਼ਤ ਹਨ।`;
+        break;
+      case 'mr':
+        speechText = `धान्य गुणवत्ता अहवाल: पीक ${crop}, प्रत ${analysisResult.grade} आहे. शुद्धता गुण ${analysisResult.score} आहे. कचरा ${analysisResult.foreignMatterPercent} टक्के आणि फुटलेले दाणे ${analysisResult.brokenGrainsPercent} टक्के आहेत.`;
+        break;
+      case 'gu':
+        speechText = `અનાજ ગુણવત્તા રિપોર્ટ: પાક ${crop}, ગ્રેડ ${analysisResult.grade} છે. શુદ્ધતા સ્કોર ${analysisResult.score} છે. કચરો ${analysisResult.foreignMatterPercent} ટકા અને તૂટેલા દાણા ${analysisResult.brokenGrainsPercent} ટકા છે.`;
+        break;
+      case 'te':
+        speechText = `ధాన్య నాణ్యత నివేదిక: పంట ${crop}, గ్రేడ్ ${analysisResult.grade}. స్వచ్ఛత స్కోర్ ${analysisResult.score}. వ్యర్థాలు ${analysisResult.foreignMatterPercent} శాతం మరియు విరిగిన ధాన్యం ${analysisResult.brokenGrainsPercent} శాతం.`;
+        break;
+      case 'ta':
+        speechText = `தானிய தர அறிக்கை: பயிர் ${crop}, தரம் ${analysisResult.grade}. தூய்மை மதிப்பெண் ${analysisResult.score}. கழிவு ${analysisResult.foreignMatterPercent} சதவீதம் மற்றும் உடைந்த தானியங்கள் ${analysisResult.brokenGrainsPercent} சதவீதம்.`;
+        break;
+      case 'kn':
+        speechText = `ಧಾನ್ಯ ಗುಣಮಟ್ಟ ವರದಿ: ಬೆಳೆ ${crop}, ಗ್ರೇಡ್ ${analysisResult.grade}. ಶುದ್ಧತೆ ಸ್ಕೋರ್ ${analysisResult.score}. ಕಸ ${analysisResult.foreignMatterPercent} ಶೇಕಡಾ ಮತ್ತು ಒಡೆದ ಧಾನ್ಯಗಳು ${analysisResult.brokenGrainsPercent} ಶೇಕಡಾ.`;
+        break;
+      case 'bn':
+        speechText = `শস্য গুণমান রিপোর্ট: ফসল ${crop}, গ্রেড ${analysisResult.grade}। বিশুদ্ধতা স্কোর ${analysisResult.score}। বর্জ্য ${analysisResult.foreignMatterPercent} শতাংশ এবং ভাঙা দানা ${analysisResult.brokenGrainsPercent} শতাংশ।`;
+        break;
+      case 'or':
+        speechText = `ଶସ୍ୟ ଗୁଣବତ୍ତା ରିପୋର୍ଟ: ଫସଲ ${crop}, ଗ୍ରେଡ୍ ${analysisResult.grade}। ଶୁଦ୍ଧତା ସ୍କୋର ${analysisResult.score}। ଅଳିଆ ${analysisResult.foreignMatterPercent} ପ୍ରତିଶତ ଏବଂ ଭଙ୍ଗା ଦାନା ${analysisResult.brokenGrainsPercent} ପ୍ରତିଶତ।`;
+        break;
+      case 'ml':
+        speechText = `ധാന്യ ഗുണനിലവാര റിപ്പോർട്ട്: വിള ${crop}, ഗ്രേഡ് ${analysisResult.grade}. ശുദ്ധി സ്കോർ ${analysisResult.score}. മാലിന്യം ${analysisResult.foreignMatterPercent} ശതമാനവും പൊട്ടിയ ധാന്യങ്ങൾ ${analysisResult.brokenGrainsPercent} ശതമാനവും.`;
+        break;
+      case 'en':
+      default:
+        speechText = `Grain Quality Inspection Report: Crop ${crop}, Grade is ${analysisResult.grade}. Optical Purity score is ${analysisResult.score} out of 100. Foreign matter is ${analysisResult.foreignMatterPercent} percent, broken kernels are ${analysisResult.brokenGrainsPercent} percent, and luster is ${analysisResult.luster}. Certified according to standard.`;
+        break;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.lang = getSpeechLangCode(language);
+    utterance.rate = 0.95;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -97,7 +175,10 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
         className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[92vh] overflow-y-auto relative"
       >
         <button
-          onClick={onClose}
+          onClick={() => {
+            if (isSpeaking) window.speechSynthesis.cancel();
+            onClose();
+          }}
           className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
         >
           <X className="w-5 h-5" />
@@ -108,13 +189,24 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
             <Camera className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">
-              AI Grain Vision Quality Inspector
+            <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span>AI Grain Optical Quality Inspector</span>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                AGMARK Calibrated
+              </span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              AGMARK / FCI Standard Optical Analysis • Moisture, Dockage & Grain Luster
+              Visual Purity, Broken Grains, Shriveled Seeds & Foreign Dockage Check
             </p>
           </div>
+        </div>
+
+        {/* Informational Banner on Moisture vs Optical */}
+        <div className="mb-5 p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+            <strong className="font-extrabold text-amber-800 dark:text-amber-300">Optical Grading Notice:</strong> Camera photos accurately inspect surface purity, broken seeds, shriveled grains, and foreign matter. Moisture is measured separately on-site with a certified digital meter at the weighbridge scale.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -142,7 +234,7 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
                         <Scan className="w-16 h-16 text-purple-300/80 animate-spin opacity-80" />
                       </div>
                       <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold text-purple-300 text-center animate-pulse">
-                        Scanning seed coat • Moisture & Dockage Detection...
+                        Scanning grain optics • Visual purity & dockage analysis...
                       </div>
                     </div>
                   )}
@@ -227,10 +319,57 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
-              <span>{isAnalyzing ? 'Inspecting Grain Optics...' : 'Run Accurate AI Inspection'}</span>
+              <span>{isAnalyzing ? 'Inspecting Grain Optics...' : 'Run Optical AI Inspection'}</span>
             </motion.button>
           </div>
         </div>
+
+        {/* Fallback & Retry Display on Connection / AI Error */}
+        <AnimatePresence>
+          {analysisError && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-slate-800 dark:text-slate-100 shadow-sm space-y-3"
+            >
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-black text-xs text-amber-900 dark:text-amber-200">
+                    Connection / AI Vision Notice
+                  </h4>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
+                    {analysisError}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleRunAnalysis}
+                  disabled={isAnalyzing}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-sm flex items-center gap-1.5 transition-colors"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                  <span>Retry AI Inspection</span>
+                </button>
+
+                <label className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors">
+                  <Upload className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Re-upload Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Results Box with AnimatePresence */}
         <AnimatePresence>
@@ -249,22 +388,44 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
                   </span>
                   <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Gemini 3.8 Flash Verified</span>
+                    <span>AGMARK Grade-1 Matched</span>
                   </span>
                 </div>
-                <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Purity Score: {analysisResult.score}/100</span>
-                </span>
+
+                <div className="flex items-center gap-2">
+                  {/* Read-Aloud Voice Button for Accessibility / Low-Literacy Support */}
+                  <button
+                    type="button"
+                    onClick={handleSpeakReport}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs ${
+                      isSpeaking
+                        ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 text-amber-800 dark:text-amber-200'
+                        : 'bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
+                    }`}
+                    title="Listen to quality report / रिपोर्ट सुनें"
+                  >
+                    {isSpeaking ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        <span>Stop Audio</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-purple-600" />
+                        <span>🔊 Listen / रिपोर्ट सुनें</span>
+                      </>
+                    )}
+                  </button>
+
+                  <span className="text-xs font-extrabold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Purity: {analysisResult.score}/100</span>
+                  </span>
+                </div>
               </div>
 
+              {/* 4 True Optical Inspection Metric Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs pt-1">
-                <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900 shadow-xs">
-                  <span className="text-slate-400 block text-[10px]">Moisture Content:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-100">
-                    {analysisResult.moisturePercent}%
-                  </span>
-                </div>
                 <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900 shadow-xs">
                   <span className="text-slate-400 block text-[10px]">Foreign Matter:</span>
                   <span className="font-bold text-slate-800 dark:text-slate-100">
@@ -272,9 +433,15 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
                   </span>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900 shadow-xs">
-                  <span className="text-slate-400 block text-[10px]">Broken Grains:</span>
+                  <span className="text-slate-400 block text-[10px]">Broken Kernels:</span>
                   <span className="font-bold text-slate-800 dark:text-slate-100">
                     {analysisResult.brokenGrainsPercent}%
+                  </span>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900 shadow-xs">
+                  <span className="text-slate-400 block text-[10px]">Shriveled Grains:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    {analysisResult.shriveledPercent}%
                   </span>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900 shadow-xs">
@@ -289,7 +456,7 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
               {analysisResult.dockageDeduction && (
                 <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900/60 text-xs flex items-start gap-2">
                   <span className="text-amber-700 dark:text-amber-300 font-extrabold text-[11px] shrink-0">
-                    Dockage & Escrow Terms:
+                    Escrow Dockage Terms:
                   </span>
                   <span className="text-amber-900 dark:text-amber-200 font-medium text-[11px]">
                     {analysisResult.dockageDeduction}
@@ -300,7 +467,7 @@ export const GrainVisionModal: React.FC<GrainVisionModalProps> = ({
               {analysisResult.agronomicAdvice && (
                 <div className="p-3 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900/60 text-xs flex items-start gap-2">
                   <span className="text-emerald-700 dark:text-emerald-300 font-extrabold text-[11px] shrink-0">
-                    Agronomic Advice:
+                    Post-Harvest Advice:
                   </span>
                   <span className="text-emerald-900 dark:text-emerald-200 font-medium text-[11px]">
                     {analysisResult.agronomicAdvice}

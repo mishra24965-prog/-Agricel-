@@ -7,8 +7,11 @@ import {
   Wheat,
   Scale,
   DollarSign,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import type { Language } from '../translations';
+import { getSpeechLangCode } from '../translations';
 
 export interface MonthDataPoint {
   month: string;
@@ -382,13 +385,76 @@ export const FarmerYieldAndPriceWidget: React.FC<FarmerYieldAndPriceWidgetProps>
   const [viewMode, setViewMode] = useState<'both' | 'yield' | 'price'>('both');
   const [hoveredPoint, setHoveredPoint] = useState<MonthDataPoint | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [isSpeakingSpike, setIsSpeakingSpike] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const uniqueId = useId();
 
-  const isHindi = language === 'hi';
+  const isHindi = language === 'hi' || language === 'bho';
   const currentCrop = CROP_SERIES.find((c) => c.cropId === selectedCropId) || CROP_SERIES[0];
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingSpike(false);
+    }
+  }, [language]);
+
+  const toggleSpikeAudio = () => {
+    if (!('speechSynthesis' in window)) return;
+    if (isSpeakingSpike) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingSpike(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    let text = '';
+    switch (language) {
+      case 'hi':
+      case 'bho':
+        text = `फसल भाव उछाल विश्लेषण: ${currentCrop.cropNameHi}। ${currentCrop.aiAnalysis.priceOutlookHi}। इष्टतम बिक्री खिड़की: ${currentCrop.aiAnalysis.optimalSellWindowHi}।`;
+        break;
+      case 'pa':
+        text = `ਫ਼ਸਲ ਭਾਅ ਵਿਸ਼ਲੇਸ਼ਣ: ${currentCrop.cropName}। ਅਗਲੇ ਮਹੀਨਿਆਂ ਵਿੱਚ ਮੰਗ ਵਧਣ ਨਾਲ ਕੀਮਤਾਂ ਵਿੱਚ ਵਾਧਾ ਹੋਵੇਗਾ। ਸਹੀ ਵੇਚਣ ਦਾ ਸਮਾਂ: ${currentCrop.aiAnalysis.optimalSellWindow}।`;
+        break;
+      case 'mr':
+        text = `पीक बाजार भाव विश्लेषण: ${currentCrop.cropName}। ${currentCrop.aiAnalysis.priceOutlook}। विक्रीची योग्य वेळ: ${currentCrop.aiAnalysis.optimalSellWindow}।`;
+        break;
+      case 'gu':
+        text = `પાક ભાવ વિશ્લેષણ: ${currentCrop.cropName}। તહેવારોની માંગને લીધે ભાવ વધશે. વેચાણનો શ્રેષ્ઠ સમય: ${currentCrop.aiAnalysis.optimalSellWindow}।`;
+        break;
+      case 'te':
+        text = `పంట ధరల విశ్లేషణ: ${currentCrop.cropName}. రాబోయే నెలల్లో ధరలు పెరుగుతాయి. సరైన విక్రయ సమయం: ${currentCrop.aiAnalysis.optimalSellWindow}.`;
+        break;
+      case 'ta':
+        text = `பயிர் விலை பகுப்பாய்வு: ${currentCrop.cropName}. வரவிருக்கும் மாதங்களில் விலை உயரும். விற்க சிறந்த நேரம்: ${currentCrop.aiAnalysis.optimalSellWindow}.`;
+        break;
+      case 'kn':
+        text = `ಬೆಳೆ ದರ ವಿಶ್ಲೇಷಣೆ: ${currentCrop.cropName}. ಮುಂಬರುವ ತಿಂಗಳುಗಳಲ್ಲಿ ಬೆಲೆ ಹೆಚ್ಚಾಗಲಿದೆ. ಮಾರಾಟಕ್ಕೆ ಸೂಕ್ತ ಸಮಯ: ${currentCrop.aiAnalysis.optimalSellWindow}.`;
+        break;
+      case 'bn':
+        text = `শস্যের মূল্য বিশ্লেষণ: ${currentCrop.cropName}। আগামী মাসে দাম বাড়ার সম্ভাবনা। বিক্রির উপযুক্ত সময়: ${currentCrop.aiAnalysis.optimalSellWindow}।`;
+        break;
+      case 'or':
+        text = `ଫସଲ ଦର ବିଶ୍ଳେଷଣ: ${currentCrop.cropName}। ଆଗାମୀ ମାସରେ ଦର ବୃଦ୍ଧି ପାଇବ। ବିକ୍ରୟର ଉପଯୁକ୍ତ ସମୟ: ${currentCrop.aiAnalysis.optimalSellWindow}।`;
+        break;
+      case 'ml':
+        text = `വിള വില വിശകലനം: ${currentCrop.cropName}. വരും മാസങ്ങളിൽ വില ഉയരും. വിൽക്കാൻ അനുയോജ്യമായ സമയം: ${currentCrop.aiAnalysis.optimalSellWindow}.`;
+        break;
+      case 'en':
+      default:
+        text = `Crop Price Spike & Market Analysis: ${currentCrop.cropName}. ${currentCrop.aiAnalysis.priceOutlook}. Optimal sell window: ${currentCrop.aiAnalysis.optimalSellWindow}.`;
+        break;
+    }
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = getSpeechLangCode(language);
+    utter.rate = 0.95;
+    utter.onend = () => setIsSpeakingSpike(false);
+    utter.onerror = () => setIsSpeakingSpike(false);
+    setIsSpeakingSpike(true);
+    window.speechSynthesis.speak(utter);
+  };
 
   // D3 Chart Render Function
   useEffect(() => {
@@ -888,6 +954,30 @@ export const FarmerYieldAndPriceWidget: React.FC<FarmerYieldAndPriceWidgetProps>
               {isHindi ? 'भाव' : 'Price'}
             </button>
           </div>
+
+          {/* Audio read button */}
+          <button
+            type="button"
+            onClick={toggleSpikeAudio}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs ${
+              isSpeakingSpike
+                ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 text-amber-800 dark:text-amber-200'
+                : 'bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
+            }`}
+            title="Listen to Monthly Price Spike Outlook / मासिक भाव उछाल विश्लेषण सुनें"
+          >
+            {isSpeakingSpike ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                <span>{isHindi ? 'ऑडियो रोकें' : 'Stop Audio'}</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-purple-600" />
+                <span>{isHindi ? '🔊 भाव उछाल सुनें' : '🔊 Listen Spike'}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

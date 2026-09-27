@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { Language } from '../translations';
+import { getSpeechLangCode } from '../translations';
 
 interface FloatingCopilotProps {
   language: Language;
@@ -94,11 +95,30 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
     activeSources: AudioBufferSourceNode[];
   }>({ nextStartTime: 0, activeSources: [] });
 
-  const isHindi = language === 'hi';
+  const isHindiOrBhojpuri = language === 'hi' || language === 'bho';
+  const isHindi = isHindiOrBhojpuri;
 
-  const initialMessageText = isHindi
-    ? 'नमस्ते! मैं एग्रीसेंस कोपायलट (AgriSense Copilot) हूँ - जेमिनी 3.8 फ्लैश, लाइव सर्च और जेमिनी 3.8 लाइव वॉयस द्वारा संचालित। आप मुझसे कृषि मंडी भाव, एगमार्क (AGMARK) नियम, बैंक एस्क्रो सुरक्षा, या एग्रीसेल चलाने का तरीका पूछ सकते हैं।'
-    : 'Namaste! I am AgriSense Copilot, powered by Gemini 3.8 Flash, live Google Search grounding, and Gemini 3.8 Live Voice. Ask me about Mandi rates, AGMARK quality standards, bank escrow disburse, or how to operate Agricel!';
+  const initialMessageText = isHindiOrBhojpuri
+    ? 'नमस्ते! मैं एग्रीसेंस कोपायलट (AgriSense Copilot) हूँ। आप मुझसे आज का मंडी भाव (गेहूं, सोयाबीन, धान, चना), एगमार्क क्वालिटी नियम, या बैंक में पैसा कैसे मिलता है - आसान भाषा में पूछ सकते हैं।'
+    : language === 'pa'
+    ? 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਐਗਰੀਸੈਂਸ ਕੋਪਾਇਲਟ ਹਾਂ। ਤੁਸੀਂ ਮੇਰੇ ਕੋਲੋਂ ਮੰਡੀ ਦੇ ਤਾਜ਼ਾ ਭਾਅ, ਅਨਾਜ ਦੀ ਜਾਂਚ, ਜਾਂ ਬੈਂਕ ਪੇਮੈਂਟ ਬਾਰੇ ਆਸਾਨ ਭਾਸ਼ਾ ਵਿੱਚ ਪੁੱਛ ਸਕਦੇ ਹੋ।'
+    : language === 'mr'
+    ? 'नमस्कार! मी अग्रीसेन्स कोपायलट आहे. आपण मला आजचे बाजार भाव, धान्य गुणवत्ता नियम आणि बँक पेमेंटबद्दल सोप्या भाषेत विचारू शकता.'
+    : language === 'kn'
+    ? 'ನಮಸ್ಕಾರ! ನಾನು ಅಗ್ರಿಸೆನ್ಸ್ ಕೋಪೈಲಟ್. ನೀವು ನನ್ನನ್ನು ಇಂದಿನ ಮಂಡಿ ದರ, ಧಾನ್ಯ ಗುಣಮಟ್ಟ ಮತ್ತು ಬ್ಯಾಂಕ್ ಪಾವತಿ ಬಗ್ಗೆ ಸುಲಭವಾಗಿ ಕೇಳಬಹುದು.'
+    : language === 'te'
+    ? 'నమస్కారం! నేను అగ్రిసెన్స్ కోపైలట్. మీరు నన్ను నేటి మార్కెట్ ధరలు, ధాన్య నాణ్యత మరియు బ్యాంక్ చెల్లింపుల గురించి అడగవచ్చు.'
+    : language === 'ta'
+    ? 'வணக்கம்! நான் அக்ரிசென்ஸ் கோபைலட். இன்றைய மண்டி விலை, தானிய தரம் மற்றும் வங்கி பணம் பெறுவது பற்றி நீங்கள் என்னிடம் எளிதாகக் கேட்கலாம்.'
+    : language === 'bn'
+    ? 'নমস্কার! আমি এগ্রিসেন্স কোপাইলট। আপনি আমাকে আজকের মান্ডি দর, শস্যের গুণমান এবং ব্যাংক পেমেন্ট সম্পর্কে সহজ ভাষায় জিজ্ঞাসা করতে পারেন।'
+    : language === 'or'
+    ? 'ନମସ୍କାର! ମୁଁ ଏଗ୍ରିସେନ୍ସ କୋପାଇଲଟ୍। ଆପଣ ମୋତେ ଆଜିର ମଣ୍ଡି ଦର, ଶସ୍ୟ ଗୁଣବତ୍ତା ଏବଂ ବ୍ୟାଙ୍କ ପେମେଣ୍ଟ ବିଷୟରେ ସହଜ ଭାଷାରେ ପଚାରିପାରିବେ।'
+    : language === 'ml'
+    ? 'നമസ്കാരം! ഞാൻ അഗ്രിസെൻസ് കോപൈലറ്റ് ആണ്. ഇന്നത്തെ മാർക്കറ്റ് വിലകൾ, ധാന്യ ഗുണനിലവാരം, ബാങ്ക് പെയ്‌മെന്റ് എന്നിവയെക്കുറിച്ച് എന്നോട് ചോദിക്കാം.'
+    : language === 'gu'
+    ? 'નમસ્તે! હું એગ્રીસેન્સ કોપાયલટ છું. તમે મને આજના મંડી ભાવ, અનાજની ગુણવત્તા અને બેંક પેમેન્ટ વિશે સરળ ભાષામાં પૂછી શકો છો.'
+    : 'Hello! I am AgriSense Copilot. Ask me about today\'s Mandi market rates, AGMARK grain quality rules, or how instant bank payments work!';
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -109,18 +129,18 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
     },
   ]);
 
-  const quickPrompts = isHindi
+  const quickPrompts = isHindiOrBhojpuri
     ? [
-        'एग्रीसेल कैसे चलाएं? (How to Operate)',
-        'इंदौर मंडी में गेहूं और सोयाबीन का आज का भाव?',
-        'एगमार्क (AGMARK) ग्रेड-1 के लिए नमी व कचरा नियम?',
-        'तौल पुल पर डिजिटल वजन और बैंक एस्क्रो भुगतान कैसे होता है?',
+        'एग्रीसेल कैसे चलाएं? (Step-by-Step Guide)',
+        'गेहूं और सोयाबीन का आज का मंडी भाव?',
+        'अनाज की गुणवत्ता और एगमार्क ग्रेड कैसे जांचें?',
+        'तौल होते ही बैंक खाते में पैसा कैसे आता है?',
       ]
     : [
         'How to Operate Agricel? (Guide)',
-        'Indore Mandi Wheat & Soybean current rates?',
-        'AGMARK Grade-1 moisture & dockage tolerances?',
-        'How does certified weighbridge escrow settlement work?',
+        'Current Mandi rates for Wheat & Soybean?',
+        'How does optical grain quality grading work?',
+        'How does instant weighbridge bank payment work?',
       ];
 
   const scrollToBottom = () => {
@@ -210,8 +230,16 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
     );
 
     try {
+      if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('Microphone access is not supported or not enabled in this browser environment.');
+      }
+
       // 1. Setup AudioContexts (16kHz for mic, 24kHz for model output)
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) {
+        throw new Error('Web Audio API is not supported in this browser.');
+      }
+
       const inputCtx = new AudioCtx({ sampleRate: 16000 });
       const outputCtx = new AudioCtx({ sampleRate: 24000 });
 
@@ -276,20 +304,19 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
             stopLiveAudioOutput();
           }
           if (msg.type === 'error') {
-            console.error('Live API message error:', msg.error);
+            console.warn('Live API message notice:', msg.error);
             setLiveError(msg.error || 'Live API connection error');
           }
         } catch (e) {
-          console.error('WS message parse error:', e);
+          console.warn('WS message parse notice:', e);
         }
       };
 
-      ws.onerror = (err) => {
-        console.error('Live WebSocket error:', err);
+      ws.onerror = () => {
         setLiveError(
           isHindi
             ? 'लाइव वॉयस सर्वर से कनेक्ट नहीं हो सका। कृपया टेक्स्ट मोड का उपयोग करें।'
-            : 'Could not connect to Live Voice server. Please use text chat mode.'
+            : 'Could not connect to Live Voice server. You can use Text Chat mode with audio readout.'
         );
         setIsLiveConnecting(false);
         setIsLiveConnected(false);
@@ -300,13 +327,18 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
         setIsLiveConnecting(false);
       };
     } catch (err: unknown) {
-      console.error('Failed to start Live session:', err);
+      console.warn('Microphone or Live session notice:', err);
       const errMsg = err instanceof Error ? err.message : String(err);
+      const isPermDenied =
+        errMsg.toLowerCase().includes('permission') ||
+        errMsg.toLowerCase().includes('notallowed') ||
+        errMsg.toLowerCase().includes('denied');
+
       setLiveError(
-        errMsg.includes('Permission')
+        isPermDenied
           ? isHindi
-            ? 'माइक्रोफ़ोन अनुमति अस्वीकृत। कृपया ब्राउज़र में माइक्रोफ़ोन की अनुमति दें।'
-            : 'Microphone permission was denied. Please allow microphone in browser settings.'
+            ? 'माइक्रोफ़ोन अनुमति प्राप्त नहीं हुई। कृपया ब्राउज़र सेटिंग्स में माइक्रोफ़ोन की अनुमति दें या नीचे टेक्स्ट चैट चुनें।'
+            : 'Microphone permission was not granted. Please allow microphone access or switch to Text Chat mode.'
           : errMsg
       );
       setIsLiveConnecting(false);
@@ -485,7 +517,7 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
 
     try {
       const recognition = new SpeechRec();
-      recognition.lang = isHindi ? 'hi-IN' : 'en-US';
+      recognition.lang = getSpeechLangCode(language);
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
@@ -506,6 +538,25 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
     }
   };
 
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const handleSpeakChatMessage = (msgId: string, text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    if (speakingMessageId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = getSpeechLangCode(language);
+    utterance.rate = 0.95;
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleResetChat = () => {
     setMessages([
       {
@@ -521,16 +572,6 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
     <>
       {/* Floating Trigger Button */}
       <div className="fixed bottom-6 right-6 z-[90] flex items-center gap-2">
-        {onOpenGuide && (
-          <button
-            onClick={onOpenGuide}
-            className="hidden sm:flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold py-3 px-4 rounded-full shadow-xl text-xs border border-emerald-500/40 backdrop-blur-md transition-all transform hover:scale-105"
-          >
-            <BookOpen className="w-4 h-4 text-emerald-600" />
-            <span>{isHindi ? 'संचालन गाइड' : 'How to Operate'}</span>
-          </button>
-        )}
-
         <button
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Open AgriSense Copilot"
@@ -613,16 +654,6 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
                 <span>{isHindi ? '🎙️ लाइव वॉयस' : '🎙️ Live Voice'}</span>
               </button>
             </div>
-
-            {onOpenGuide && (
-              <button
-                onClick={onOpenGuide}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-extrabold text-[11px] hover:bg-emerald-100 transition-colors"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{isHindi ? 'ऑपरेटिंग गाइड' : 'How to Operate'}</span>
-              </button>
-            )}
           </div>
 
           {/* VIEW 1: Live Voice Conversation View (gemini-3.8-live) */}
@@ -684,14 +715,32 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
 
               {/* Status and Transcript Area */}
               <div className="w-full space-y-3">
-                <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 min-h-[68px] flex items-center justify-center">
+                <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 min-h-[68px] flex flex-col items-center justify-center gap-2">
                   {isLiveConnecting ? (
                     <div className="flex items-center gap-2 text-amber-300 font-bold">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{isHindi ? 'कनेक्ट हो रहा है...' : 'Connecting Live Voice Session...'}</span>
                     </div>
                   ) : liveError ? (
-                    <div className="text-red-400 text-xs font-semibold">{liveError}</div>
+                    <div className="space-y-2 text-center">
+                      <div className="text-rose-400 text-xs font-semibold px-2">{liveError}</div>
+                      <div className="flex items-center justify-center gap-2 pt-1">
+                        <button
+                          onClick={startLiveSession}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-bold hover:bg-amber-500/30 transition-colors flex items-center gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>{isHindi ? 'पुनः प्रयास करें' : 'Retry Mic'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleToggleMode('chat')}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-colors flex items-center gap-1"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>{isHindi ? 'टेक्स्ट चैट पर जाएं' : 'Switch to Text Mode'}</span>
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <p className="italic text-slate-300 leading-relaxed font-medium">
                       "{liveTranscript}"
@@ -798,9 +847,24 @@ export const FloatingCopilot: React.FC<FloatingCopilotProps> = ({ language, onOp
                       )}
 
                       {m.timestamp && (
-                        <span className="text-[9px] text-slate-400 block px-1">
-                          {m.timestamp}
-                        </span>
+                        <div className="flex items-center justify-between text-[9px] text-slate-400 px-1">
+                          <span>{m.timestamp}</span>
+                          {m.sender === 'ai' && (
+                            <button
+                              type="button"
+                              onClick={() => handleSpeakChatMessage(m.id, m.text)}
+                              className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-0.5 ml-2"
+                              title="Listen / सुनें"
+                            >
+                              {speakingMessageId === m.id ? (
+                                <VolumeX className="w-3 h-3 text-amber-500 animate-pulse" />
+                              ) : (
+                                <Volume2 className="w-3 h-3" />
+                              )}
+                              <span>{speakingMessageId === m.id ? 'Stop' : 'Listen'}</span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

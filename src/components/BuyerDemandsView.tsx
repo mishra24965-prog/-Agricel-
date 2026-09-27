@@ -88,22 +88,22 @@ export const BuyerDemandsView: React.FC<BuyerDemandsViewProps> = ({
                   {d.crop}
                 </span>
                 <span className="text-xs font-black text-blue-600 dark:text-blue-400">
-                  Target: ₹{d.price.toLocaleString()} / Ton
+                  Target: ₹{(d.price ?? d.targetPrice ?? 25000).toLocaleString()} / Ton
                 </span>
               </div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
                 {d.buyerName}
               </h3>
               <p className="text-xs text-slate-400 mb-1 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-blue-500" /> {d.buyerPhone}
+                <Phone className="w-3.5 h-3.5 text-blue-500" /> {d.buyerPhone || d.phone || '+91 98930 55443'}
               </p>
               <p className="text-xs text-slate-400 mb-3 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-rose-500" /> {d.location}
+                <MapPin className="w-3.5 h-3.5 text-rose-500" /> {d.location || d.destination || 'Indore'}
               </p>
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Required Tonnage:</span>
-                  <span className="font-extrabold text-blue-600">{d.qty} Tons</span>
+                  <span className="font-extrabold text-blue-600">{d.qty ?? d.qtyNeeded ?? 50} Tons</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Target Variety:</span>

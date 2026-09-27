@@ -488,21 +488,28 @@ export function computeRegionalClusters(
     const potentialSavings = Math.round(totalQty * 320); // Saved compared to piecemeal fragmented trucking
 
     let advice = `Concentrated regional supply in ${district}: ${totalQty} Tons of ${crop} available across ${clusterListings.length} farm lot(s).`;
-    if (matchingDemand) {
-      if (totalQty >= matchingDemand.qty) {
-        advice = `🎯 Exact Demand Match: ${district} has ${totalQty} Tons of ${crop}—completely satisfying your ${matchingDemand.qty} Ton procurement in one single logistics route! Average asking price is ₹${avgPrice}/Ton.`;
+    const demandTons = matchingDemand ? (matchingDemand.qty ?? matchingDemand.qtyNeeded ?? 0) : 0;
+    if (matchingDemand && demandTons > 0) {
+      if (totalQty >= demandTons) {
+        advice = `🎯 Exact Demand Match: ${district} has ${totalQty} Tons of ${crop}—completely satisfying your ${demandTons} Ton procurement in one single logistics route! Average asking price is ₹${avgPrice}/Ton.`;
       } else {
-        advice = `Partial Match: ${district} provides ${totalQty} Tons of your ${matchingDemand.qty} Ton demand with average purity of ${avgQualityScore}/100. Consolidating these saves ~₹${potentialSavings.toLocaleString()} in multi-stop freight.`;
+        advice = `Partial Match: ${district} provides ${totalQty} Tons of your ${demandTons} Ton demand with average purity of ${avgQualityScore}/100. Consolidating these saves ~₹${potentialSavings.toLocaleString()} in multi-stop freight.`;
       }
     }
 
     clusters.push({
       district,
       crop,
+      primaryCrop: crop,
+      totalAvailableTons: totalQty,
       totalQty,
+      activeListingsCount: clusterListings.length,
       listingCount: clusterListings.length,
+      avgAskingPrice: avgPrice,
       avgPrice,
       avgQualityScore,
+      buyerDemandTons: demandTons,
+      topVarieties: Array.from(new Set(clusterListings.map((l) => l.variety))),
       listings: clusterListings,
       freightEstimatePerTon,
       potentialSavings,
@@ -510,5 +517,5 @@ export function computeRegionalClusters(
     });
   });
 
-  return clusters.sort((a, b) => b.totalQty - a.totalQty);
+  return clusters.sort((a, b) => (b.totalQty ?? 0) - (a.totalQty ?? 0));
 }
