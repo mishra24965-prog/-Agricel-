@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Connection testing
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isValidId(userId);
+      allow delete: if false;
+    }
+
+    // Listings Collection
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if isValidId(listingId)
+                    && incoming().crop is string
+                    && incoming().qty is number
+                    && incoming().price is number;
+      allow update: if isValidId(listingId);
+      allow delete: if isValidId(listingId);
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if isValidId(orderId)
+                    && incoming().trackingId is string;
+      allow update: if isValidId(orderId);
+      allow delete: if false;
+    }
+
+    // Demands Collection
+    match /demands/{demandId} {
+      allow read: if true;
+      allow create: if isValidId(demandId)
+                    && incoming().crop is string
+                    && incoming().qty is number;
+      allow update: if isValidId(demandId);
+      allow delete: if isValidId(demandId);
+    }
+
+    // Grievances Collection
+    match /grievances/{grievanceId} {
+      allow read: if true;
+      allow create: if isValidId(grievanceId)
+                    && incoming().trackingId is string
+                    && incoming().details is string;
+      allow update: if isValidId(grievanceId);
+      allow delete: if false;
+    }
+  }
+}

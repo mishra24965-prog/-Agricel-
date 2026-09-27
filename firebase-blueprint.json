@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "Personalized user profile for Agricel members",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["farmer", "buyer", "logistics", "admin"] },
+        "phone": { "type": "string", "maxLength": 30 },
+        "organization": { "type": "string", "maxLength": 150 },
+        "district": { "type": "string", "maxLength": 100 },
+        "bankAccountLast4": { "type": "string", "maxLength": 10 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["displayName", "email", "role"]
+    },
+    "listing": {
+      "title": "Harvest Crop Listing",
+      "description": "Crop listed by farmer or FPO for wholesale purchase with escrow guarantee",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "farmerName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "crop": { "type": "string", "maxLength": 50 },
+        "variety": { "type": "string", "maxLength": 50 },
+        "qty": { "type": "number" },
+        "price": { "type": "number" },
+        "location": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["Available", "Escrow Locked", "Sold"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["ownerId", "farmerName", "crop", "variety", "qty", "price", "location", "status"]
+    },
+    "order": {
+      "title": "Escrow Order",
+      "description": "Direct trade order locked in neutral bank escrow awaiting weighbridge clearance",
+      "type": "object",
+      "properties": {
+        "trackingId": { "type": "string", "maxLength": 30 },
+        "cropInfo": { "type": "string", "maxLength": 150 },
+        "buyerId": { "type": "string", "maxLength": 128 },
+        "buyerName": { "type": "string", "maxLength": 100 },
+        "buyerPhone": { "type": "string", "maxLength": 30 },
+        "farmerId": { "type": "string", "maxLength": 128 },
+        "farmerName": { "type": "string", "maxLength": 100 },
+        "farmerPhone": { "type": "string", "maxLength": 30 },
+        "qty": { "type": "number" },
+        "pricePerTon": { "type": "number" },
+        "totalEscrow": { "type": "number" },
+        "status": { "type": "string", "enum": ["Awaiting Weighbridge", "In Transit / Verified", "Settled", "Disputed"] },
+        "origin": { "type": "string", "maxLength": 120 },
+        "verifiedWeight": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["trackingId", "cropInfo", "buyerId", "farmerName", "pricePerTon", "status"]
+    },
+    "demand": {
+      "title": "Buyer Demand (RFQ)",
+      "description": "Procurement requirement posted by commercial mills and wholesale buyers",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string", "maxLength": 128 },
+        "buyerName": { "type": "string", "maxLength": 100 },
+        "buyerPhone": { "type": "string", "maxLength": 30 },
+        "crop": { "type": "string", "maxLength": 50 },
+        "variety": { "type": "string", "maxLength": 50 },
+        "qty": { "type": "number" },
+        "price": { "type": "number" },
+        "location": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["Open", "Fulfilled"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["buyerId", "buyerName", "crop", "variety", "qty", "price", "location"]
+    },
+    "grievance": {
+      "title": "Arbitration Dispute Ticket",
+      "description": "Trade dispute ticket submitted to the management tribunal desk",
+      "type": "object",
+      "properties": {
+        "trackingId": { "type": "string", "maxLength": 30 },
+        "orderId": { "type": "string", "maxLength": 128 },
+        "raisedById": { "type": "string", "maxLength": 128 },
+        "raisedByName": { "type": "string", "maxLength": 100 },
+        "userPhone": { "type": "string", "maxLength": 30 },
+        "farmerPhone": { "type": "string", "maxLength": 30 },
+        "role": { "type": "string", "maxLength": 30 },
+        "category": { "type": "string", "maxLength": 100 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["Open", "Resolved"] },
+        "verdict": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["trackingId", "raisedById", "raisedByName", "category", "details", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "Personalized user profiles and preferences"
+    },
+    "/listings/{listingId}": {
+      "schema": { "$ref": "#/entities/listing" },
+      "description": "Crop listings published by farmers/FPOs"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/order" },
+      "description": "Escrow trade orders between buyers and farmers"
+    },
+    "/demands/{demandId}": {
+      "schema": { "$ref": "#/entities/demand" },
+      "description": "Wholesale buyer procurement RFQs"
+    },
+    "/grievances/{grievanceId}": {
+      "schema": { "$ref": "#/entities/grievance" },
+      "description": "Arbitration and trade dispute tickets"
+    }
+  }
+}
